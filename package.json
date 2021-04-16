@@ -1,0 +1,21 @@
+{
+  "name": "autotracker-plugin",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/OOT-Multiworld-Tracker/Autotracker-Plugin.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/OOT-Multiworld-Tracker/Autotracker-Plugin/issues"
+  },
+  "homepage": "https://github.com/OOT-Multiworld-Tracker/Autotracker-Plugin#readme",
+  "keywords": [],
+  "description": "",
+  "modloader64_deps": {}
+}

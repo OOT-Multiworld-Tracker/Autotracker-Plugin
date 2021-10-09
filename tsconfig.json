@@ -19,7 +19,8 @@
       "@autotracker-plugin/*": [
         "./src/autotracker-plugin/*"
       ]
-    }
+    },
+    "noImplicitAny": false
   },
   "include": [
     "src/**/*.ts",

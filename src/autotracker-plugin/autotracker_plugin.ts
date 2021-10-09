@@ -62,8 +62,6 @@ class autotracker_plugin implements IPlugin{
         if (!this.saveLoaded) return;
         if (!this.saveInit) this.prevInv = this.core.save.inventory;
 
-        // this.ModLoader.logger.debug(this.core.link.state.toString())
-
         if (this.core.link.state == LinkState.GETTING_ITEM) this.prepareChestSend = true;
 
         if (this.prepareChestSend && this.core.link.state == LinkState.STANDING) bus.emit(AutotrackerEvents.ON_CHEST_OPENED)
@@ -72,7 +70,6 @@ class autotracker_plugin implements IPlugin{
     getLiveScenedData(): void {
         var buf = this.core.global.liveSceneData_chests;
         this.ModLoader.logger.debug(`Scene: ${this.core.global.scene} Chests: ${buf.toJSON().data[3].toString(2)}`);
-        // var data = Buffer.from(buf.toJSON().data, 'base64');
     }
 
     @EventHandler(OotEvents.ON_SAVE_LOADED)
@@ -105,7 +102,7 @@ class autotracker_plugin implements IPlugin{
         this.ModLoader.logger.debug(`Current: ${this.core.global.liveSceneData_chests.toJSON().data[3].toString(2)}`);
         this.ModLoader.logger.debug(`Previous: ${this.previousChestState.toJSON().data[3].toString(2)}`);
         this.ModLoader.logger.debug(`Chest Opened: ${chestOpened.toString()}`);
-        // this.sendChestState(chestOpened)
+        this.sendChestState(chestOpened)
         this.prepareChestSend = false;
         this.previousChestState = this.core.global.liveSceneData_chests;
     }

@@ -1,12 +1,14 @@
-import {IPlugin, IModLoaderAPI} from 'modloader64_api/IModLoaderAPI';
+import {IPlugin, IModLoaderAPI　} from 'modloader64_api/IModLoaderAPI';
 import {IInventory, IOOTCore, OotEvents} from 'modloader64_api/OOT/OOTAPI';
 import {InjectCore} from 'modloader64_api/CoreInjection';
 import { EventHandler, EventsClient } from 'modloader64_api/EventHandler';
 import { Server } from 'ws';
 
-import { ActorCategory } from 'modloader64_api/OOT/ActorCategory';
+import { Packet } from 'modloader64_api/ModLoaderDefaultImpls';
 
-class autotracker_plugin implements IPlugin{
+import { NetworkHandler, ServerNetworkHandler } from 'modloader64_api/NetworkHandler';
+
+class autotracker_plugin implements IPlugin　{
 
     ModLoader!: IModLoaderAPI;
     pluginName?: string | undefined;
@@ -21,25 +23,39 @@ class autotracker_plugin implements IPlugin{
     preinit(): void {
     }
     init(): void {
-        this.wss = new Server({ port: 8080 })
+        this.wss;
+        try {
+            this.wss = new Server({ port: 8080 }).on("error", () => {
+                this.wss = new Server({ port: 19420 })
+            })
+        } catch (e) {
+            console.log(e)
+        }
         this.ModLoader.logger.info("AutoTracker WebSocket initalized on port 8080")
 
         this.wss.on('connection', (socket) => {
             socket.on('message', (data) => {
                 let json = JSON.parse(data.toString());
+                console.log(data)
                 switch (json["PAYLOAD"]) {
                     case 0:
                         this.ModLoader.logger.info(`Sent current game-state for tracker request`);
-                        let payload = {}
                         this.sendState(0, {save: this.core.save})
                         break
 
                     case 1:
                         socket.send("NOT_INITALIZED")
                         break
+
+                    case 2:
+                        let json = JSON.parse(data.toString())
+                        this.ModLoader.clientSide.sendPacket(new TrackerUpdate(data.toString(), this.ModLoader.clientLobby))
+                        break
                 }
             })
         })
+        
+        setInterval(() => console.log(this.core.global.liveSceneData_chests), 5000)
     }
     postinit(): void {
     }
@@ -54,6 +70,13 @@ class autotracker_plugin implements IPlugin{
         setInterval(() => {this.sendState(0, {save: this.core.save})}, 10000)
     }
 
+    @NetworkHandler("TrackerUpdate")
+    onClientItemGet(packet: TrackerUpdate): void
+    {
+        var data: string = packet.data
+        this.sendState(3, JSON.parse(data).data)
+    }
+
     @EventHandler(OotEvents.ON_SCENE_CHANGE)
     onSceneChange(): void {
         this.ModLoader.logger.info(`Sent current scene to tracker`);
@@ -66,5 +89,18 @@ class autotracker_plugin implements IPlugin{
         })
     }
 }
+
+export class TrackerUpdate extends Packet
+{
+    data: string;
+  
+    constructor(data: string, lobby: string)
+    {
+        super("TrackerUpdate", "MultiTracker", lobby, true);
+
+        this.data = data
+    }
+}
+
 
 module.exports = autotracker_plugin;

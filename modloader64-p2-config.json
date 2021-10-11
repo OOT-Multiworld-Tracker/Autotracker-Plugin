@@ -1,0 +1,31 @@
+{
+  "ModLoader64": {
+    "rom": "Singleworld_Random.z64",
+    "patch": "",
+    "isServer": false,
+    "isClient": true,
+    "supportedConsoles": [
+      "N64"
+    ],
+    "selectedConsole": "N64",
+    "coreOverride": "",
+    "disableVIUpdates": false
+  },
+  "NetworkEngine.Client": {
+    "isSinglePlayer": false,
+    "forceServerOverride": false,
+    "ip": "192.99.70.23",
+    "port": 8000,
+    "lobby": "exam-puzzling-19",
+    "nickname": "Player",
+    "password": ""
+  },
+  "NetworkEngine.Server": {
+    "port": 8082,
+    "udpPort": 8082,
+    "patchSizeLimitMB": 10
+  },
+  "OcarinaofTime": {
+    "skipN64Logo": true
+  }
+}

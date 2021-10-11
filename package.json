@@ -19,6 +19,7 @@
   "description": "",
   "modloader64_deps": {},
   "dependencies": {
+    "react": "^17.0.2",
     "ws": "^7.4.4"
   },
   "devDependencies": {

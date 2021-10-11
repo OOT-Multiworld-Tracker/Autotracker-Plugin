@@ -1,6 +1,6 @@
 {
   "ModLoader64": {
-    "rom": "Singleworld_Random.z64",
+    "rom": "OoTR_905677_OCBAV5OR57.z64",
     "patch": "",
     "isServer": true,
     "isClient": true,
@@ -14,8 +14,8 @@
   "NetworkEngine.Client": {
     "isSinglePlayer": false,
     "forceServerOverride": false,
-    "ip": "127.0.0.1",
-    "port": 8082,
+    "ip": "192.99.70.23",
+    "port": 8000,
     "lobby": "exam-puzzling-19",
     "nickname": "Player",
     "password": ""

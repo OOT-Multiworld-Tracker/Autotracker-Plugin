@@ -1,5 +1,5 @@
 import {IPlugin, IModLoaderAPI, ILogger} from 'modloader64_api/IModLoaderAPI';
-import {IInventory, IOOTCore, LinkState, OotEvents} from 'modloader64_api/OOT/OOTAPI';
+import {AmmoUpgrade, IInventory, IOOTCore, LinkState, OotEvents} from 'modloader64_api/OOT/OOTAPI';
 import {InjectCore} from 'modloader64_api/CoreInjection';
 import { bus, EventHandler, EventsClient } from 'modloader64_api/EventHandler';
 import { Server } from 'ws';
@@ -7,7 +7,27 @@ import { Server } from 'ws';
 import { ActorCategory } from 'modloader64_api/OOT/ActorCategory';
 
 enum AutotrackerEvents {
-    ON_CHEST_OPENED =  'Autotracker:onChestOpened'
+    ON_CHEST_OPENED = 'Autotracker:onChestOpened',
+    ON_COLLECTABLE_GATHERED = 'Autotracker:onCollectableGathered',
+    ON_INVENTORY_CHANGED = 'Autotracker:onInventoryChanged',
+    ON_SKULLTULA_GATHERED = 'Autotracker:onSkulltulaGathered'
+}
+
+enum AutotrackerPayloads {
+    CONNECTED_SAVE_REQUEST,
+
+}
+
+enum MultiworldTrackerPayloads {
+    SEND_SAVE,
+    SEND_SCENE,
+    UNUSED,
+
+}
+
+type AutotrackerSkulltula = {
+    index: number,
+    skulltula: number,
 }
 
 class autotracker_plugin implements IPlugin{
@@ -20,11 +40,13 @@ class autotracker_plugin implements IPlugin{
     @InjectCore()
     core!: IOOTCore;
 
-    previousInventoryState!: IInventory;
     previousChestState!: Buffer;
-    prepareChestSend: boolean = false;
+    previousCollectableState!: Buffer;
+    previousSkulltulaState!: Buffer;
+    prepareItemSend: boolean = false;
+    skulltula: AutotrackerSkulltula = {index: 0, skulltula: 0};
+    skulltulaGathered: boolean = false;
     saveInit: boolean = false;
-    prevInv!: IInventory;
     lastPacket!: object;
     wss!: Server;
 
@@ -60,16 +82,39 @@ class autotracker_plugin implements IPlugin{
     onTick(frame?: number | undefined): void {
         if (!this.core.link.exists) { return }
         if (!this.saveLoaded) return;
-        if (!this.saveInit) this.prevInv = this.core.save.inventory;
 
-        if (this.core.link.state == LinkState.GETTING_ITEM) this.prepareChestSend = true;
+        if (frame !== undefined && frame % 20 == 0) {
+            if (this.core.link.state == (LinkState.BUSY || LinkState.LOADING_ZONE)) return;
 
-        if (this.prepareChestSend && this.core.link.state == LinkState.STANDING) bus.emit(AutotrackerEvents.ON_CHEST_OPENED)
-    }
+            this.previousSkulltulaState.forEach((v, i) => {
+                var cur = this.core.save.skulltulaFlags;
+                if (this.skulltula.skulltula) return;
+                if ((v ^ cur[i]) != 0)
+                    this.skulltula = {index: i, skulltula: (v ^ cur[i])};
+            });
 
-    getLiveScenedData(): void {
-        var buf = this.core.global.liveSceneData_chests;
-        this.ModLoader.logger.debug(`Scene: ${this.core.global.scene} Chests: ${buf.toJSON().data[3].toString(2)}`);
+            if (this.skulltula.skulltula) {
+                bus.emit(AutotrackerEvents.ON_SKULLTULA_GATHERED, {index: this.skulltula.index, skulltula: this.skulltula.skulltula});
+                this.previousSkulltulaState = this.core.save.skulltulaFlags;
+                this.skulltula = {index: 0, skulltula: 0};
+            }
+        }
+
+        if (this.core.link.state == LinkState.BUSY) this.prepareItemSend = true;
+
+        if (this.prepareItemSend && this.core.link.state == LinkState.STANDING) {
+            var chestOpened = this.core.global.liveSceneData_chests.toJSON().data[3] ^ this.previousChestState.toJSON().data[3];
+            var collectableGathered = this.core.global.liveSceneData_collectable.toJSON().data[0] ^ this.previousCollectableState.toJSON().data[0];
+
+            if (chestOpened) bus.emit(AutotrackerEvents.ON_CHEST_OPENED, chestOpened);
+            else if (collectableGathered) bus.emit(AutotrackerEvents.ON_COLLECTABLE_GATHERED, collectableGathered);
+            else this.ModLoader.logger.error("Nothing was collected. This is probably because of the new handler.");
+
+            this.previousChestState = this.core.global.liveSceneData_chests;
+            this.previousCollectableState = this.core.global.liveSceneData_collectable;
+
+            this.prepareItemSend = false;
+        }
     }
 
     @EventHandler(OotEvents.ON_SAVE_LOADED)
@@ -77,7 +122,18 @@ class autotracker_plugin implements IPlugin{
         this.ModLoader.logger.info(`Sent current game-state to tracker`);
         this.saveLoaded = true;
         this.sendState(0, {save: this.core.save})
-        setInterval(() => {this.getLiveScenedData()}, 10000)
+
+        this.previousSkulltulaState = this.core.save.skulltulaFlags;
+
+        // this.core.save.inventory.bombs = true;
+        // this.core.save.inventory.bombBag = AmmoUpgrade.MAX;
+        // this.core.save.inventory.bombsCount = 40;
+
+        // this.core.save.inventory.dekuSticks = true;
+        // this.core.save.inventory.dekuSticksCapacity = AmmoUpgrade.MAX;
+        // this.core.save.inventory.dekuSticksCount = 30;
+
+        // this.core.commandBuffer.runWarp(0x138, 16, ()=>{})
     }
 
     @EventHandler(OotEvents.ON_SCENE_CHANGE)
@@ -85,7 +141,10 @@ class autotracker_plugin implements IPlugin{
         this.ModLoader.logger.info(`Sent current scene to tracker`);
         this.sendSaveState();
         this.sendState(1, {scene: this.core.global.scene})
+
         this.previousChestState = this.core.global.liveSceneData_chests;
+        this.previousCollectableState = this.core.global.liveSceneData_collectable;
+        this.previousSkulltulaState = this.core.save.skulltulaFlags;
     }
 
     @EventHandler(OotEvents.ON_HEALTH_CHANGE)
@@ -95,16 +154,22 @@ class autotracker_plugin implements IPlugin{
     }
 
     @EventHandler(AutotrackerEvents.ON_CHEST_OPENED)
-    onChestOpened() {
-        var chestOpened = this.core.global.liveSceneData_chests.toJSON().data[3] ^ this.previousChestState.toJSON().data[3];
+    onChestOpened(chestOpened) {
         this.ModLoader.logger.debug("Sending save packet (Chest Update)");
         this.sendSaveState();
-        this.ModLoader.logger.debug(`Current: ${this.core.global.liveSceneData_chests.toJSON().data[3].toString(2)}`);
-        this.ModLoader.logger.debug(`Previous: ${this.previousChestState.toJSON().data[3].toString(2)}`);
         this.ModLoader.logger.debug(`Chest Opened: ${chestOpened.toString()}`);
         this.sendChestState(chestOpened)
-        this.prepareChestSend = false;
-        this.previousChestState = this.core.global.liveSceneData_chests;
+    }
+
+    @EventHandler(AutotrackerEvents.ON_COLLECTABLE_GATHERED)
+    onCollectableGathered(collectableGathered) {
+        this.ModLoader.logger.debug(`Collectable Gathered: ${collectableGathered.toString()}`);
+    }
+
+    @EventHandler(AutotrackerEvents.ON_SKULLTULA_GATHERED)
+    onSkulltulaGathered(skulltula) {
+        this.ModLoader.logger.debug(JSON.stringify(skulltula));
+
     }
 
     sendState(payload: number, state: object) {
@@ -114,7 +179,7 @@ class autotracker_plugin implements IPlugin{
     }
 
     sendSaveState() {
-        this.sendState(0, {save: this.core.save})
+        this.sendState(MultiworldTrackerPayloads.SEND_SAVE, {save: this.core.save})
     }
 
     sendChestState(chestOpened) {

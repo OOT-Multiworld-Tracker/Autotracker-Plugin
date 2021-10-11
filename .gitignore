@@ -105,3 +105,7 @@ dist
 
 # Build files
 build/
+cores/
+
+# Testing mod files
+*.pak

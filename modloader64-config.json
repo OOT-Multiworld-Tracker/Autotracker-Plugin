@@ -1,13 +1,13 @@
 {
   "ModLoader64": {
-    "rom": "OoTR_905677_OCBAV5OR57.z64",
+    "rom": "OoTR_904473_HQOL1YV6LM.z64",
     "patch": "",
     "isServer": true,
     "isClient": true,
     "supportedConsoles": [
-      "N64"
+      "Mupen64Plus"
     ],
-    "selectedConsole": "N64",
+    "selectedConsole": "Mupen64Plus",
     "coreOverride": "",
     "disableVIUpdates": false
   },
@@ -18,7 +18,8 @@
     "port": 8000,
     "lobby": "exam-puzzling-19",
     "nickname": "Player",
-    "password": ""
+    "password": "",
+    "forceTCPMode": false
   },
   "NetworkEngine.Server": {
     "port": 8082,
@@ -27,5 +28,11 @@
   },
   "OcarinaofTime": {
     "skipN64Logo": true
+  },
+  "Mupen64Plus": {
+    "rsp": "mupen64plus-rsp-hle",
+    "video": "mupen64plus-video-gliden64",
+    "audio": "mupen64plus-audio-sdl",
+    "input": "mupen64plus-input-sdl"
   }
 }

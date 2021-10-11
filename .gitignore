@@ -109,3 +109,10 @@ dist
 
 # TernJS port file
 .tern-port
+
+# Build files
+build/
+cores/
+
+# Testing mod files
+*.pak

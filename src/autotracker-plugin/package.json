@@ -9,5 +9,12 @@
   "keywords": [],
   "author": "",
   "license": "ISC",
-  "core": "OcarinaofTime"
+  "core": "OcarinaofTime",
+  "dependencies": {
+    "eventemitter2": "^6.4.5",
+    "ws": "^8.2.3"
+  },
+  "devDependencies": {
+    "@types/ws": "^7.4.1"
+  }
 }

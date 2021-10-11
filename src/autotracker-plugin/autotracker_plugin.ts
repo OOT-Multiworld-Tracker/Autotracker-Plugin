@@ -30,6 +30,18 @@ type AutotrackerSkulltula = {
     skulltula: number,
 }
 
+export class TrackerUpdate extends Packet
+{
+    data: string;
+  
+    constructor(data: string, lobby: string)
+    {
+        super("TrackerUpdate", "MultiTracker", lobby, true);
+
+        this.data = data
+    }
+}
+
 class autotracker_plugin implements IPlugin{
 
     ModLoader!: IModLoaderAPI;
@@ -70,6 +82,10 @@ class autotracker_plugin implements IPlugin{
 
                     case 1:
                         socket.send("NOT_INITALIZED")
+                        break
+                    case 2:
+                        let json = JSON.parse(data.toString())
+                        this.ModLoader.clientSide.sendPacket(new TrackerUpdate(data.toString(), this.ModLoader.clientLobby))
                         break
                 }
             })
@@ -115,6 +131,13 @@ class autotracker_plugin implements IPlugin{
 
             this.prepareItemSend = false;
         }
+    }
+    
+    @NetworkHandler("TrackerUpdate")
+    onClientItemGet(packet: TrackerUpdate): void
+    {
+        var data: string = packet.data
+        this.sendState(3, JSON.parse(data).data)
     }
 
     @EventHandler(OotEvents.ON_SAVE_LOADED)
@@ -186,5 +209,6 @@ class autotracker_plugin implements IPlugin{
         this.sendState(5, { scene: this.core.global.scene, chestOpened })
     }
 }
+
 
 module.exports = autotracker_plugin;

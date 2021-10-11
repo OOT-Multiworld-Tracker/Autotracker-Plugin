@@ -17,5 +17,12 @@
   "homepage": "https://github.com/OOT-Multiworld-Tracker/Autotracker-Plugin#readme",
   "keywords": [],
   "description": "",
-  "modloader64_deps": {}
+  "modloader64_deps": {},
+  "dependencies": {
+    "react": "^17.0.2",
+    "ws": "^7.4.4"
+  },
+  "devDependencies": {
+    "@types/ws": "^7.4.1"
+  }
 }

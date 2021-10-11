@@ -4,7 +4,8 @@ import {InjectCore} from 'modloader64_api/CoreInjection';
 import { bus, EventHandler, EventsClient } from 'modloader64_api/EventHandler';
 import { Server } from 'ws';
 
-import { ActorCategory } from 'modloader64_api/OOT/ActorCategory';
+import { NetworkHandler, } from 'modloader64_api/NetworkHandler';
+import { Packet } from 'modloader64_api/ModLoaderDefaultImpls';
 
 enum AutotrackerEvents {
     ON_CHEST_OPENED = 'Autotracker:onChestOpened',
@@ -15,14 +16,12 @@ enum AutotrackerEvents {
 
 enum AutotrackerPayloads {
     CONNECTED_SAVE_REQUEST,
-
 }
 
 enum MultiworldTrackerPayloads {
     SEND_SAVE,
     SEND_SCENE,
     UNUSED,
-
 }
 
 type AutotrackerSkulltula = {
@@ -30,19 +29,16 @@ type AutotrackerSkulltula = {
     skulltula: number,
 }
 
-export class TrackerUpdate extends Packet
-{
+export class TrackerUpdate extends Packet {
     data: string;
   
-    constructor(data: string, lobby: string)
-    {
+    constructor(data: string, lobby: string) {
         super("TrackerUpdate", "MultiTracker", lobby, true);
-
         this.data = data
     }
 }
 
-class autotracker_plugin implements IPlugin{
+class autotracker_plugin implements IPlugin {
 
     ModLoader!: IModLoaderAPI;
     pluginName?: string | undefined;

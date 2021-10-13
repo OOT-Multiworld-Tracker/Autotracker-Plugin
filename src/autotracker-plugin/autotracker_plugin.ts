@@ -7,26 +7,36 @@ import { Server } from 'ws';
 import { NetworkHandler, } from 'modloader64_api/NetworkHandler';
 import { Packet } from 'modloader64_api/ModLoaderDefaultImpls';
 
+
+enum PacketStates {
+    INVENTORY_STATE,
+    SCENE_STATE
+}
+
 enum AutotrackerEvents {
     ON_CHEST_OPENED = 'Autotracker:onChestOpened',
     ON_COLLECTABLE_GATHERED = 'Autotracker:onCollectableGathered',
-    ON_INVENTORY_CHANGED = 'Autotracker:onInventoryChanged',
-    ON_SKULLTULA_GATHERED = 'Autotracker:onSkulltulaGathered'
+    ON_SKULLTULA_GATHERED = 'Autotracker:onSkulltulaGathered',
 }
 
 enum AutotrackerPayloads {
     CONNECTED_SAVE_REQUEST,
+    NOT_INITALIZED,
+    TRACKER_UPDATE,
 }
 
 enum MultiworldTrackerPayloads {
     SEND_SAVE,
     SEND_SCENE,
+    SEND_CHEST_CHANGE,
+    SEND_COLLECTABLE_CHANGE,
+    SEND_SKULLTULA_CHANGE,
     UNUSED,
 }
 
-type AutotrackerSkulltula = {
+type AutotrackerData = {
     index: number,
-    skulltula: number,
+    object: number,
 }
 
 export class TrackerUpdate extends Packet {
@@ -52,7 +62,7 @@ class autotracker_plugin implements IPlugin {
     previousCollectableState!: Buffer;
     previousSkulltulaState!: Buffer;
     prepareItemSend: boolean = false;
-    skulltula: AutotrackerSkulltula = {index: 0, skulltula: 0};
+    skulltula: AutotrackerData = {index: 0, object: 0};
     skulltulaGathered: boolean = false;
     saveInit: boolean = false;
     lastPacket!: object;
@@ -70,17 +80,17 @@ class autotracker_plugin implements IPlugin {
             socket.on('message', (data) => {
                 let json = JSON.parse(data.toString());
                 switch (json["PAYLOAD"]) {
-                    case 0:
+                    case AutotrackerPayloads.CONNECTED_SAVE_REQUEST:
                         this.ModLoader.logger.info(`Sent current game-state for tracker request`);
                         let payload = {}
                         this.sendState(0, {save: this.core.save})
                         break
 
-                    case 1:
+                    case AutotrackerPayloads.NOT_INITALIZED:
                         socket.send("NOT_INITALIZED")
                         break
-                    case 2:
-                        let json = JSON.parse(data.toString())
+                    case AutotrackerPayloads.TRACKER_UPDATE:
+                        // let json = JSON.parse(data.toString()) // Unused code??
                         this.ModLoader.clientSide.sendPacket(new TrackerUpdate(data.toString(), this.ModLoader.clientLobby))
                         break
                 }
@@ -95,25 +105,28 @@ class autotracker_plugin implements IPlugin {
         if (!this.core.link.exists) { return }
         if (!this.saveLoaded) return;
 
+        // Run event checks every 20 frames (~1 second)
         if (frame !== undefined && frame % 20 == 0) {
             if (this.core.link.state == (LinkState.BUSY || LinkState.LOADING_ZONE)) return;
 
             this.previousSkulltulaState.forEach((v, i) => {
                 var cur = this.core.save.skulltulaFlags;
-                if (this.skulltula.skulltula) return;
+                if (this.skulltula.object) return;
                 if ((v ^ cur[i]) != 0)
-                    this.skulltula = {index: i, skulltula: (v ^ cur[i])};
+                    this.skulltula = {index: i, object: (v ^ cur[i])};
             });
 
-            if (this.skulltula.skulltula) {
-                bus.emit(AutotrackerEvents.ON_SKULLTULA_GATHERED, {index: this.skulltula.index, skulltula: this.skulltula.skulltula});
+            if (this.skulltula.object) {
+                bus.emit(AutotrackerEvents.ON_SKULLTULA_GATHERED, {index: this.skulltula.index, skulltula: this.skulltula.object});
                 this.previousSkulltulaState = this.core.save.skulltulaFlags;
-                this.skulltula = {index: 0, skulltula: 0};
+                this.skulltula = {index: 0, object: 0};
             }
         }
 
         if (this.core.link.state == LinkState.BUSY) this.prepareItemSend = true;
 
+        // TODO: Re-write to test against all bytes
+        // Run events checks after the Item Gathered animation finishes
         if (this.prepareItemSend && this.core.link.state == LinkState.STANDING) {
             var chestOpened = this.core.global.liveSceneData_chests.toJSON().data[3] ^ this.previousChestState.toJSON().data[3];
             var collectableGathered = this.core.global.liveSceneData_collectable.toJSON().data[0] ^ this.previousCollectableState.toJSON().data[0];
@@ -182,7 +195,9 @@ class autotracker_plugin implements IPlugin {
 
     @EventHandler(AutotrackerEvents.ON_COLLECTABLE_GATHERED)
     onCollectableGathered(collectableGathered) {
-        this.ModLoader.logger.debug(`Collectable Gathered: ${collectableGathered.toString()}`);
+        this.ModLoader.logger.debug("Sending save packet (Collectable Update)");
+        this.sendSaveState();
+
     }
 
     @EventHandler(AutotrackerEvents.ON_SKULLTULA_GATHERED)
@@ -202,7 +217,15 @@ class autotracker_plugin implements IPlugin {
     }
 
     sendChestState(chestOpened) {
-        this.sendState(5, { scene: this.core.global.scene, chestOpened })
+        this.sendState(MultiworldTrackerPayloads.SEND_CHEST_CHANGE, { scene: this.core.global.scene, chest: chestOpened })
+    }
+
+    sendCollectableState(collectableGathered) {
+        this.sendState(MultiworldTrackerPayloads.SEND_CHEST_CHANGE, { scene: this.core.global.scene, collectable: collectableGathered})
+    }
+
+    sendSkulltulaState(skulltulaGathered) {
+        this.sendState(MultiworldTrackerPayloads.SEND_SKULLTULA_CHANGE, { skulltula: skulltulaGathered })
     }
 }
 

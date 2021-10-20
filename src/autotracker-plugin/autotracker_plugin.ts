@@ -146,7 +146,7 @@ class autotracker_plugin implements IPlugin {
     onClientItemGet(packet: TrackerUpdate): void
     {
         var data: string = packet.data
-        this.sendState(3, JSON.parse(data).data)
+        this.sendState(7, JSON.parse(data).data)
     }
 
     @EventHandler(OotEvents.ON_SAVE_LOADED)
